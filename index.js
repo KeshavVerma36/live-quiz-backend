@@ -120,7 +120,7 @@ wss.on('connection', (ws, req) => {
                 playersScores[username] = score; // Update score for the player
 
                 // Broadcast updated scores to all connected clients
-                const players = Object.entries(players Scores).map(([name, score]) => ({ username: name, score }));
+                const players = Object.entries(playersScores).map(([name, score]) => ({ username: name, score }));
                 wss.clients.forEach((client) => {
                     if (client.readyState === WebSocket.OPEN ) {
                         client.send(JSON.stringify({ type: 'UPDATE_SCORES', players }));
