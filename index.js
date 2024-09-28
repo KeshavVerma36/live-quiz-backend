@@ -105,7 +105,7 @@ const fetchHistoryQuestions = async () => {
 };
 
 // WebSocket connection handling
-wss.on('connection', (ws, req) => {
+wss.on('connection', (ws) => {
     if (req.headers.origin === 'https://live-quiz-frontend.vercel.app') {
         console.log('A new player connected');
 
