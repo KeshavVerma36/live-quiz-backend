@@ -1,4 +1,3 @@
-
 const express = require('express');
 const WebSocket = require('ws');
 const cors = require('cors');
@@ -8,7 +7,10 @@ const app = express();
 const port = 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'https://live-quiz-frontend.vercel.app',
+    credentials: true,
+}));
 app.use(express.json());
 
 const genAI = new GoogleGenerativeAI('AIzaSyD1AU87CK2mGIESkDx5fHZ_HsyEYgfkFrs');
@@ -103,45 +105,49 @@ const fetchHistoryQuestions = async () => {
 };
 
 // WebSocket connection handling
-wss.on('connection', (ws) => {
-    console.log('A new player connected');
+wss.on('connection', (ws, req) => {
+    if (req.headers.origin === 'https://live-quiz-frontend.vercel.app') {
+        console.log('A new player connected');
 
-    ws.on('message', async (message) => {
-        const { type, username } = JSON.parse(message);
+        ws.on('message', async (message) => {
+            const { type, username } = JSON.parse(message);
 
-        if (type === 'GET_QUESTIONS') {
-            const questions = await fetchHistoryQuestions(); // Fetch or return cached questions
-            ws.send(JSON.stringify({ type: 'QUESTIONS', payload: questions }));
-        } else if (type === 'UPDATE_SCORE') {
-            const { score } = JSON.parse(message);
-            playersScores[username] = score; // Update score for the player
+            if (type === 'GET_QUESTIONS') {
+                const questions = await fetchHistoryQuestions(); // Fetch or return cached questions
+                ws.send(JSON.stringify({ type: 'QUESTIONS', payload: questions }));
+            } else if (type === 'UPDATE_SCORE') {
+                const { score } = JSON.parse(message);
+                playersScores[username] = score; // Update score for the player
 
-            // Broadcast updated scores to all connected clients
-            const players = Object.entries(playersScores).map(([name, score]) => ({ username: name, score }));
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN ) {
-                    client.send(JSON.stringify({ type: 'UPDATE_SCORES', players }));
-                }
-            });
+                // Broadcast updated scores to all connected clients
+                const players = Object.entries(players Scores).map(([name, score]) => ({ username: name, score }));
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN ) {
+                        client.send(JSON.stringify({ type: 'UPDATE_SCORES', players }));
+                    }
+                });
 
-            // Log the updated scores
-            console.log('Updated Scores:', players);
-        } else if (type === 'START_QUIZ') {
-            console.log('Received START_QUIZ signal from Host page...');
+                // Log the updated scores
+                console.log('Updated Scores:', players);
+            } else if (type === 'START_QUIZ') {
+                console.log('Received START_QUIZ signal from Host page...');
 
-            // Broadcast START_QUIZ message to all connected clients
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: 'START_QUIZ' }));
-                }
-            });
-        }
-    });
+                // Broadcast START_QUIZ message to all connected clients
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: 'START_QUIZ' }));
+                    }
+                });
+            }
+        });
 
-    ws.on('close', () => {
-        console.log('A player disconnected');
-        delete playersScores[ws.username]; // Remove player score on disconnect
-    });
+        ws.on('close', () => {
+            console.log('A player disconnected');
+            delete playersScores[ws.username]; // Remove player score on disconnect
+        });
+    } else {
+        ws.close();
+    }
 });
 
 // Upgrade HTTP server to WebSocket
